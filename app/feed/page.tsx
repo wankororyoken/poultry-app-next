@@ -107,22 +107,25 @@ export default function FeedPage() {
           </button>
         )}
         <div className="grid grid-cols-2 gap-2 mb-4">
-          {rooms.map((room) => {
+          {rooms.map((room, idx) => {
             const yVal = yesterday[period][room.id]
             const val = values[period][room.id] ?? ''
             const hasValue = val !== ''
+            const isLastOdd = idx === rooms.length - 1 && rooms.length % 2 !== 0
             return (
               <div key={room.id}
                 className={`bg-surface rounded-xl border p-3 transition-all
-                  ${hasValue ? 'border-green/60' : 'border-border'}`}>
+                  ${hasValue ? 'border-green/60' : 'border-border'}
+                  ${isLastOdd ? 'col-span-2' : ''}`}>
                 <div className="text-xs font-bold text-text2 mb-1">{room.name}</div>
                 {yVal && <div className="text-[10px] text-text2 mb-1.5">昨日 {yVal}kg</div>}
                 <div className="flex items-center gap-1.5">
                   <input type="number" inputMode="decimal"
                     value={val} onChange={(e) => handleInput(room.id, e.target.value)}
-                    onFocus={(e) => e.target.select()} placeholder="0"
+                    onFocus={(e) => e.target.select()} placeholder="－"
                     className={`flex-1 bg-bg border rounded-lg px-2 py-2 text-center
                                text-base font-bold focus:outline-none focus:border-green
+                               placeholder:text-border placeholder:font-normal
                                ${hasValue ? 'border-green/60 text-green' : 'border-border text-text'}`}
                   />
                   <span className="text-xs text-text2">kg</span>

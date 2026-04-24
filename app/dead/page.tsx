@@ -72,22 +72,25 @@ export default function DeadPage() {
       <Header title="養鶏管理" />
       <div className="pt-[calc(52px+env(safe-area-inset-top))] px-3 py-4">
         <div className="grid grid-cols-2 gap-2 mb-4">
-          {rooms.map((room) => {
+          {rooms.map((room, idx) => {
             const val = values[room.id] ?? ''
             const hasValue = val !== ''
             const m = monthly[room.id] || 0
+            const isLastOdd = idx === rooms.length - 1 && rooms.length % 2 !== 0
             return (
               <div key={room.id}
                 className={`bg-surface rounded-xl border p-3 transition-all
-                  ${hasValue && Number(val) > 0 ? 'border-red/60' : 'border-border'}`}>
+                  ${hasValue && Number(val) > 0 ? 'border-red/60' : 'border-border'}
+                  ${isLastOdd ? 'col-span-2' : ''}`}>
                 <div className="text-xs font-bold text-text2 mb-1">{room.name}</div>
                 {m > 0 && <div className="text-[10px] text-text2 mb-1.5">30日累計 {m}羽</div>}
                 <div className="flex items-center gap-1.5">
                   <input type="number" inputMode="numeric" pattern="[0-9]*"
                     value={val} onChange={(e) => handleInput(room.id, e.target.value)}
-                    onFocus={(e) => e.target.select()} placeholder="0"
+                    onFocus={(e) => e.target.select()} placeholder="－"
                     className={`flex-1 bg-bg border rounded-lg px-2 py-2 text-center
                                text-base font-bold focus:outline-none focus:border-red
+                               placeholder:text-border placeholder:font-normal
                                ${hasValue && Number(val) > 0 ? 'border-red/60 text-red' : 'border-border text-text'}`}
                   />
                   <span className="text-xs text-text2">羽</span>
