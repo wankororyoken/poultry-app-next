@@ -12,6 +12,13 @@ export default function Header({ title }: { title: string }) {
     ? new Date(currentDate + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', weekday: 'short' })
     : ''
 
+  const moveDate = (delta: number) => {
+    if (!currentDate) return
+    const d = new Date(currentDate + 'T00:00:00')
+    d.setDate(d.getDate() + delta)
+    setCurrentDate(d.toISOString().split('T')[0])
+  }
+
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-40 bg-surface border-b border-border
@@ -25,17 +32,29 @@ export default function Header({ title }: { title: string }) {
         </span>
 
         <div className="flex items-center gap-2">
-          {/* 日付 */}
-          <label className="relative bg-surface2 border border-border rounded-full
-                            px-3 py-1 text-xs font-bold text-text cursor-pointer">
-            📅 {dateLabel}
-            <input
-              type="date"
-              value={currentDate}
-              onChange={(e) => setCurrentDate(e.target.value)}
-              className="absolute inset-0 opacity-0 w-full cursor-pointer"
-            />
-          </label>
+          {/* 日付ナビ */}
+          <div className="flex items-center bg-surface2 border border-border rounded-full overflow-hidden">
+            <button
+              onClick={() => moveDate(-1)}
+              className="px-2.5 py-1 text-sm text-text2 font-bold active:bg-border transition-colors"
+              style={{ touchAction: 'manipulation' }}
+            >‹</button>
+            <label className="relative px-2 py-1 text-xs font-bold text-text cursor-pointer
+                              border-x border-border">
+              📅 {dateLabel}
+              <input
+                type="date"
+                value={currentDate}
+                onChange={(e) => setCurrentDate(e.target.value)}
+                className="absolute inset-0 opacity-0 w-full cursor-pointer"
+              />
+            </label>
+            <button
+              onClick={() => moveDate(1)}
+              className="px-2.5 py-1 text-sm text-text2 font-bold active:bg-border transition-colors"
+              style={{ touchAction: 'manipulation' }}
+            >›</button>
+          </div>
 
           {/* 入力者 */}
           <button
