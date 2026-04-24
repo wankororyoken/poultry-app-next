@@ -17,10 +17,18 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-html, body {
+html {
   height: 100%;
+  background: #0f1117;
+}
+
+body {
+  min-height: 100dvh;
   background: #0f1117;
   color: #eef0f8;
   font-family: 'Noto Sans JP', sans-serif;
   overflow-x: hidden;
+  /* iOS Safariでのスクロール干渉を防ぐ */
+  -webkit-overflow-scrolling: auto;
+  overscroll-behavior-y: none;
 }

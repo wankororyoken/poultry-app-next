@@ -16,8 +16,8 @@ export default function Header({ title }: { title: string }) {
     <>
       <header className="fixed top-0 left-0 right-0 z-40 bg-surface border-b border-border
                          flex items-center justify-between px-4
-                         h-[calc(52px+env(safe-area-inset-top))]
-                         pt-[env(safe-area-inset-top)]">
+                         h-[calc(52px+env(safe-area-inset-top,0px))]
+                         pt-[env(safe-area-inset-top,0px)]">
         <span className="text-base font-black"
           style={{ background: 'linear-gradient(135deg, #f5a623, #e8743b)',
                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>

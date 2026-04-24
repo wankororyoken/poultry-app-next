@@ -20,8 +20,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-bg">
-      <main className="flex-1 overflow-y-auto pb-[calc(56px+env(safe-area-inset-bottom))]">
+    <div className="bg-bg">
+      <main className="pb-[calc(72px+env(safe-area-inset-bottom))]">
         {children}
       </main>
       <BottomNav />
