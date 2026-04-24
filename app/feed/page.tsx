@@ -108,6 +108,9 @@ export default function FeedPage() {
         )}
         <div className="grid grid-cols-2 gap-2 mb-4">
           {rooms.map((room) => {
+            const yVal = yesterday[period][room.id]
+            const val = values[period][room.id] ?? ''
+            const hasValue = val !== ''
             return (
               <div key={room.id}
                 className={`bg-surface rounded-xl border p-3 transition-all min-w-0
