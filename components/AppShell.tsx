@@ -20,7 +20,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="bg-bg">
+    <div className="bg-bg" style={{ isolation: 'isolate' }}>
       <main className="pb-[calc(72px+env(safe-area-inset-bottom))]">
         {children}
       </main>
