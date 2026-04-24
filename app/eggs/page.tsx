@@ -88,28 +88,26 @@ export default function EggsPage() {
           ))}
         </div>
         <div className="grid grid-cols-2 gap-2 mb-4">
-          {rooms.map((room, idx) => {
+          {rooms.map((room) => {
             const yVal = yesterday[period][room.id]
             const val = values[period][room.id] ?? ''
             const hasValue = val !== ''
-            const isLastOdd = idx === rooms.length - 1 && rooms.length % 2 !== 0
             return (
               <div key={room.id}
-                className={`bg-surface rounded-xl border p-3 transition-all
-                  ${hasValue ? 'border-accent/60' : 'border-border'}
-                  ${isLastOdd ? 'col-span-2' : ''}`}>
+                className={`bg-surface rounded-xl border p-3 transition-all min-w-0
+                  ${hasValue ? 'border-accent/60' : 'border-border'}`}>
                 <div className="text-xs font-bold text-text2 mb-1">{room.name}</div>
                 {yVal && <div className="text-[10px] text-text2 mb-1.5">昨日 {yVal}個</div>}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <input type="number" inputMode="numeric" pattern="[0-9]*"
                     value={val} onChange={(e) => handleInput(room.id, e.target.value)}
                     onFocus={(e) => e.target.select()} placeholder="－"
-                    className={`flex-1 bg-bg border rounded-lg px-2 py-2 text-center
+                    className={`w-0 flex-1 bg-bg border rounded-lg px-2 py-2 text-center
                                text-base font-bold focus:outline-none focus:border-accent
                                placeholder:text-border placeholder:font-normal
                                ${hasValue ? 'border-accent/60 text-accent' : 'border-border text-text'}`}
                   />
-                  <span className="text-xs text-text2">個</span>
+                  <span className="text-xs text-text2 flex-shrink-0">個</span>
                 </div>
               </div>
             )
