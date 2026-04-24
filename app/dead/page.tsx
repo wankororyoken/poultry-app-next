@@ -73,6 +73,9 @@ export default function DeadPage() {
       <div className="pt-[calc(52px+env(safe-area-inset-top))] px-3 py-4">
         <div className="grid grid-cols-2 gap-2 mb-4">
           {rooms.map((room) => {
+            const val = values[room.id] ?? ''
+            const hasValue = val !== ''
+            const m = monthly[room.id] || 0
             return (
               <div key={room.id}
                 className={`bg-surface rounded-xl border p-3 transition-all min-w-0
