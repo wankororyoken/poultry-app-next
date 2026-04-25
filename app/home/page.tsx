@@ -98,12 +98,13 @@ export default function HomePage() {
 
   // 餌/卵 の色分け: 少ないほど効率良い（緑）→ 多いほど赤
   // ~120g: 緑  121~160g: 黄  161~200g: オレンジ  201g~: 赤
-  const feedPerEggColor = (g: number | null) => {
-    if (g == null) return 'text-border'
-    if (g <= 120) return 'text-green'
-    if (g <= 160) return 'text-accent'
-    if (g <= 200) return 'text-accent2'
-    return 'text-red'
+  // text-accent2 は Tailwind v4 で生成されないため inline style を使用
+  const feedPerEggStyle = (g: number | null): React.CSSProperties => {
+    if (g == null) return { color: 'var(--color-border)' }
+    if (g <= 120)  return { color: 'var(--color-green)' }
+    if (g <= 160)  return { color: 'var(--color-accent)' }
+    if (g <= 200)  return { color: '#e8743b' }   // accent2
+    return { color: 'var(--color-red)' }
   }
 
   return (
@@ -177,7 +178,8 @@ export default function HomePage() {
                       <td className={`py-2 text-center text-[11px] font-bold ${feed != null ? 'text-green' : 'text-border'}`}>
                         {feed != null ? `${feed}` : '－'}
                       </td>
-                      <td className={`py-2 text-center text-[11px] font-bold ${feedPerEggColor(feedPerEgg)}`}>
+                      <td className="py-2 text-center text-[11px] font-bold"
+                          style={feedPerEggStyle(feedPerEgg)}>
                         {feedPerEgg != null ? `${feedPerEgg}` : '－'}
                       </td>
                       <td className={`py-2 text-center text-[11px] font-bold ${
@@ -202,7 +204,8 @@ export default function HomePage() {
                   <td className="pt-2.5 text-center text-[11px] font-black text-green">
                     {totalFeed}<span className="text-[9px] ml-0.5">kg</span>
                   </td>
-                  <td className={`pt-2.5 text-center text-[11px] font-black ${feedPerEggColor(totalFeedPerEgg)}`}>
+                  <td className="pt-2.5 text-center text-[11px] font-black"
+                      style={feedPerEggStyle(totalFeedPerEgg)}>
                     {totalFeedPerEgg != null ? <>{totalFeedPerEgg}<span className="text-[9px] ml-0.5">g</span></> : '－'}
                   </td>
                   <td className={`pt-2.5 text-center text-[11px] font-black ${totalDead > 0 ? 'text-red' : 'text-text2'}`}>
