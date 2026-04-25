@@ -12,11 +12,15 @@ export default function Header({ title }: { title: string }) {
     ? new Date(currentDate + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', weekday: 'short' })
     : ''
 
+  // toISOString()はUTCに変換するためJSTで日付がずれる → 文字列で直接計算
   const moveDate = (delta: number) => {
     if (!currentDate) return
-    const d = new Date(currentDate + 'T00:00:00')
-    d.setDate(d.getDate() + delta)
-    setCurrentDate(d.toISOString().split('T')[0])
+    const [y, m, d] = currentDate.split('-').map(Number)
+    const date = new Date(y, m - 1, d + delta)
+    const ny = date.getFullYear()
+    const nm = String(date.getMonth() + 1).padStart(2, '0')
+    const nd = String(date.getDate()).padStart(2, '0')
+    setCurrentDate(`${ny}-${nm}-${nd}`)
   }
 
   return (
@@ -32,26 +36,32 @@ export default function Header({ title }: { title: string }) {
         </span>
 
         <div className="flex items-center gap-2">
-          {/* 日付ナビ */}
-          <div className="flex items-center bg-surface2 border border-border rounded-full overflow-hidden">
+          {/* 日付ナビ — ‹ と › はlabelの外に出してz-indexで確実に前面に */}
+          <div className="flex items-center bg-surface2 border border-border rounded-full">
             <button
               onClick={() => moveDate(-1)}
-              className="px-2.5 py-1 text-sm text-text2 font-bold active:bg-border transition-colors"
+              className="relative z-10 px-2.5 py-1.5 text-base leading-none text-text2
+                         font-bold active:bg-border rounded-l-full transition-colors"
               style={{ touchAction: 'manipulation' }}
             >‹</button>
+
             <label className="relative px-2 py-1 text-xs font-bold text-text cursor-pointer
-                              border-x border-border">
+                              border-x border-border overflow-hidden">
               📅 {dateLabel}
+              {/* inputをlabel内に閉じ込める: absolute+inset-0+overflow-hidden */}
               <input
                 type="date"
                 value={currentDate}
                 onChange={(e) => setCurrentDate(e.target.value)}
-                className="absolute inset-0 opacity-0 w-full cursor-pointer"
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                style={{ width: '100%', height: '100%' }}
               />
             </label>
+
             <button
               onClick={() => moveDate(1)}
-              className="px-2.5 py-1 text-sm text-text2 font-bold active:bg-border transition-colors"
+              className="relative z-10 px-2.5 py-1.5 text-base leading-none text-text2
+                         font-bold active:bg-border rounded-r-full transition-colors"
               style={{ touchAction: 'manipulation' }}
             >›</button>
           </div>
@@ -61,6 +71,7 @@ export default function Header({ title }: { title: string }) {
             onClick={() => setShowWorkerMenu(true)}
             className="bg-surface2 border border-border rounded-full px-3 py-1
                        text-xs font-bold text-accent"
+            style={{ touchAction: 'manipulation' }}
           >
             {currentWorker?.name}
           </button>
