@@ -122,9 +122,9 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* 今日の状況 — 部屋ごとカード */}
-        <section>
-          <div className="flex items-center justify-between mb-2">
+        {/* 今日の状況 */}
+        <section className="bg-surface rounded-2xl border border-border p-4">
+          <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-black text-text2 tracking-widest uppercase">
               📅 今日の状況
             </h2>
@@ -137,120 +137,89 @@ export default function HomePage() {
           </div>
 
           {loading ? (
-            <div className="text-sm text-text2 text-center py-8">読み込み中...</div>
+            <p className="text-sm text-text2 text-center py-4">読み込み中...</p>
           ) : (
-            <>
-              {/* 部屋ごとカード 2列 */}
-              <div className="grid grid-cols-2 gap-2 mb-3">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left text-[10px] text-text2 font-bold pb-2 pr-1">鶏舎</th>
+                  <th className="text-center text-[10px] text-text2 font-bold pb-2">🥚採卵</th>
+                  <th className="text-center text-[10px] text-text2 font-bold pb-2">🌾餌</th>
+                  <th className="text-center text-[10px] text-text2 font-bold pb-2">📈餌/卵</th>
+                  <th className="text-center text-[10px] text-text2 font-bold pb-2">💀死鶏</th>
+                  {hasFlock && <th className="text-center text-[10px] text-text2 font-bold pb-2">🐔羽数</th>}
+                </tr>
+              </thead>
+              <tbody>
                 {rooms.map((room) => {
                   const eggs = data?.todayEggs[room.id]
                   const feed = data?.todayFeed[room.id]
                   const dead = data?.todayDead[room.id]
                   const flock = data?.currentFlock[room.id]
-
                   const feedPerEgg = (eggs != null && eggs > 0 && feed != null && feed > 0)
                     ? Math.round((feed * 1000) / eggs) : null
-                  const layingRate = (flock != null && flock > 0 && eggs != null && eggs > 0)
-                    ? Math.round((eggs / flock) * 1000) / 10 : null
-
                   return (
-                    <div key={room.id}
-                      className="bg-surface rounded-xl border border-border p-3 space-y-1.5">
-                      <div className="text-xs font-black text-text border-b border-border/50 pb-1.5">
-                        {room.name}
-                      </div>
-
-                      {/* 採卵 */}
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-text2">🥚 採卵</span>
-                        <span className={`text-xs font-bold ${eggs != null ? 'text-accent' : 'text-border'}`}>
-                          {eggs != null ? `${eggs}個` : '－'}
-                        </span>
-                      </div>
-
-                      {/* 餌 */}
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-text2">🌾 餌</span>
-                        <span className={`text-xs font-bold ${feed != null ? 'text-green' : 'text-border'}`}>
-                          {feed != null ? `${feed}kg` : '－'}
-                        </span>
-                      </div>
-
-                      {/* 指標: 餌/卵 */}
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-text2">📈 餌/卵</span>
-                        <span className={`text-xs font-bold ${feedPerEgg != null ? 'text-blue' : 'text-border'}`}>
-                          {feedPerEgg != null ? `${feedPerEgg}g` : '－'}
-                        </span>
-                      </div>
-
-                      {/* 指標: 産卵率（羽数設定がある部屋のみ） */}
+                    <tr key={room.id} className="border-b border-border/40 last:border-0">
+                      <td className="py-2 pr-1 text-[11px] font-bold text-text2 whitespace-nowrap">{room.name}</td>
+                      <td className={`py-2 text-center text-[11px] font-bold ${eggs != null ? 'text-accent' : 'text-border'}`}>
+                        {eggs != null ? `${eggs}` : '－'}
+                      </td>
+                      <td className={`py-2 text-center text-[11px] font-bold ${feed != null ? 'text-green' : 'text-border'}`}>
+                        {feed != null ? `${feed}` : '－'}
+                      </td>
+                      <td className={`py-2 text-center text-[11px] font-bold ${feedPerEgg != null ? 'text-blue' : 'text-border'}`}>
+                        {feedPerEgg != null ? `${feedPerEgg}` : '－'}
+                      </td>
+                      <td className={`py-2 text-center text-[11px] font-bold ${
+                        dead == null ? 'text-border' : dead > 0 ? 'text-red' : 'text-text2'
+                      }`}>
+                        {dead != null ? `${dead}` : '－'}
+                      </td>
                       {hasFlock && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-text2">🐔 産卵率</span>
-                          <span className={`text-xs font-bold ${
-                            layingRate == null ? 'text-border'
-                            : layingRate >= 90 ? 'text-green'
-                            : layingRate >= 75 ? 'text-accent'
-                            : 'text-red'
-                          }`}>
-                            {layingRate != null ? `${layingRate}%` : '－'}
-                          </span>
-                        </div>
+                        <td className={`py-2 text-center text-[11px] font-bold ${flock != null ? 'text-blue' : 'text-border'}`}>
+                          {flock != null ? `${flock}` : '－'}
+                        </td>
                       )}
-
-                      {/* 死鶏 */}
-                      <div className="flex items-center justify-between border-t border-border/50 pt-1.5">
-                        <span className="text-[10px] text-text2">💀 死鶏</span>
-                        <span className={`text-xs font-bold ${
-                          dead == null ? 'text-border'
-                          : dead > 0 ? 'text-red'
-                          : 'text-text2'
-                        }`}>
-                          {dead != null ? `${dead}羽` : '－'}
-                        </span>
-                      </div>
-                    </div>
+                    </tr>
                   )
                 })}
-              </div>
-
-              {/* 合計バー */}
-              <div className="bg-surface rounded-xl border border-border px-4 py-3">
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  <div>
-                    <div className="text-[10px] text-text2 mb-0.5">🥚 採卵</div>
-                    <div className="text-sm font-black text-accent">{totalEggs}<span className="text-[10px] ml-0.5">個</span></div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-text2 mb-0.5">🌾 餌</div>
-                    <div className="text-sm font-black text-green">{totalFeed}<span className="text-[10px] ml-0.5">kg</span></div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-text2 mb-0.5">📈 餌/卵</div>
-                    <div className={`text-sm font-black ${totalFeedPerEgg != null ? 'text-blue' : 'text-border'}`}>
-                      {totalFeedPerEgg != null ? <>{totalFeedPerEgg}<span className="text-[10px] ml-0.5">g</span></> : '－'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-text2 mb-0.5">💀 死鶏</div>
-                    <div className={`text-sm font-black ${totalDead > 0 ? 'text-red' : 'text-text2'}`}>
-                      {totalDead}<span className="text-[10px] ml-0.5">羽</span>
-                    </div>
-                  </div>
-                </div>
+                {/* 合計行 */}
+                <tr className="border-t-2 border-border">
+                  <td className="pt-2.5 text-[11px] font-black pr-1">合計</td>
+                  <td className="pt-2.5 text-center text-[11px] font-black text-accent">
+                    {totalEggs}<span className="text-[9px] ml-0.5">個</span>
+                  </td>
+                  <td className="pt-2.5 text-center text-[11px] font-black text-green">
+                    {totalFeed}<span className="text-[9px] ml-0.5">kg</span>
+                  </td>
+                  <td className={`pt-2.5 text-center text-[11px] font-black ${totalFeedPerEgg != null ? 'text-blue' : 'text-border'}`}>
+                    {totalFeedPerEgg != null ? <>{totalFeedPerEgg}<span className="text-[9px] ml-0.5">g</span></> : '－'}
+                  </td>
+                  <td className={`pt-2.5 text-center text-[11px] font-black ${totalDead > 0 ? 'text-red' : 'text-text2'}`}>
+                    {totalDead}<span className="text-[9px] ml-0.5">羽</span>
+                  </td>
+                  {hasFlock && (
+                    <td className="pt-2.5 text-center text-[11px] font-black text-blue">
+                      {totalFlock}<span className="text-[9px] ml-0.5">羽</span>
+                    </td>
+                  )}
+                </tr>
+                {/* 産卵率行（羽数設定がある場合のみ） */}
                 {totalLayingRate != null && (
-                  <div className="mt-2 pt-2 border-t border-border/50 text-center">
-                    <span className="text-[10px] text-text2">🐔 全体産卵率　</span>
-                    <span className={`text-sm font-black ${
-                      totalLayingRate >= 90 ? 'text-green'
-                      : totalLayingRate >= 75 ? 'text-accent'
-                      : 'text-red'
-                    }`}>{totalLayingRate}%</span>
-                  </div>
+                  <tr>
+                    <td colSpan={hasFlock ? 6 : 5}
+                        className="pt-2 text-right text-[10px] text-text2">
+                      🐔 全体産卵率：
+                      <span className={`font-black ml-1 ${
+                        totalLayingRate >= 90 ? 'text-green'
+                        : totalLayingRate >= 75 ? 'text-accent'
+                        : 'text-red'
+                      }`}>{totalLayingRate}%</span>
+                    </td>
+                  </tr>
                 )}
-              </div>
-            </>
+              </tbody>
+            </table>
           )}
         </section>
 
