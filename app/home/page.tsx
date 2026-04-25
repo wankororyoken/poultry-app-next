@@ -96,14 +96,13 @@ export default function HomePage() {
   const totalLayingRate = totalFlock && totalFlock > 0 && totalEggs > 0
     ? Math.round((totalEggs / totalFlock) * 1000) / 10 : null
 
-  // 餌/卵 の色分け: 少ないほど効率良い（緑）→ 多いほど赤
-  // ~120g: 緑  121~160g: 黄  161~200g: オレンジ  201g~: 赤
-  // text-accent2 は Tailwind v4 で生成されないため inline style を使用
+  // 餌/卵 の色分け: 少ないほど効率良い（緑）→ 多いほど赤（100g刻み）
+  // ~100g: 緑  101~200g: 黄  201~300g: オレンジ  301g~: 赤
   const feedPerEggStyle = (g: number | null): React.CSSProperties => {
     if (g == null) return { color: 'var(--color-border)' }
-    if (g <= 120)  return { color: 'var(--color-green)' }
-    if (g <= 160)  return { color: 'var(--color-accent)' }
-    if (g <= 200)  return { color: '#e8743b' }   // accent2
+    if (g <= 100)  return { color: 'var(--color-green)' }
+    if (g <= 200)  return { color: 'var(--color-accent)' }
+    if (g <= 300)  return { color: '#e8743b' }   // accent2（オレンジ）
     return { color: 'var(--color-red)' }
   }
 
