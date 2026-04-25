@@ -96,6 +96,16 @@ export default function HomePage() {
   const totalLayingRate = totalFlock && totalFlock > 0 && totalEggs > 0
     ? Math.round((totalEggs / totalFlock) * 1000) / 10 : null
 
+  // 餌/卵 の色分け: 少ないほど効率良い（緑）→ 多いほど赤
+  // ~120g: 緑  121~160g: 黄  161~200g: オレンジ  201g~: 赤
+  const feedPerEggColor = (g: number | null) => {
+    if (g == null) return 'text-border'
+    if (g <= 120) return 'text-green'
+    if (g <= 160) return 'text-accent'
+    if (g <= 200) return 'text-accent2'
+    return 'text-red'
+  }
+
   return (
     <AppShell>
       <Header title="養鶏管理" />
@@ -167,7 +177,7 @@ export default function HomePage() {
                       <td className={`py-2 text-center text-[11px] font-bold ${feed != null ? 'text-green' : 'text-border'}`}>
                         {feed != null ? `${feed}` : '－'}
                       </td>
-                      <td className={`py-2 text-center text-[11px] font-bold ${feedPerEgg != null ? 'text-blue' : 'text-border'}`}>
+                      <td className={`py-2 text-center text-[11px] font-bold ${feedPerEggColor(feedPerEgg)}`}>
                         {feedPerEgg != null ? `${feedPerEgg}` : '－'}
                       </td>
                       <td className={`py-2 text-center text-[11px] font-bold ${
@@ -192,7 +202,7 @@ export default function HomePage() {
                   <td className="pt-2.5 text-center text-[11px] font-black text-green">
                     {totalFeed}<span className="text-[9px] ml-0.5">kg</span>
                   </td>
-                  <td className={`pt-2.5 text-center text-[11px] font-black ${totalFeedPerEgg != null ? 'text-blue' : 'text-border'}`}>
+                  <td className={`pt-2.5 text-center text-[11px] font-black ${feedPerEggColor(totalFeedPerEgg)}`}>
                     {totalFeedPerEgg != null ? <>{totalFeedPerEgg}<span className="text-[9px] ml-0.5">g</span></> : '－'}
                   </td>
                   <td className={`pt-2.5 text-center text-[11px] font-black ${totalDead > 0 ? 'text-red' : 'text-text2'}`}>
