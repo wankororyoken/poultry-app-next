@@ -9,11 +9,17 @@ import { supabase } from '@/lib/supabase'
 type Period = '午前' | '午後'
 type RoomValues = Record<string, string>
 
+function toDateStr(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export default function EggsPage() {
   const { currentDate, currentWorker, rooms } = useApp()
   const [period, setPeriod] = useState<Period>('午前')
   const [values, setValues] = useState<Record<Period, RoomValues>>({ '午前': {}, '午後': {} })
   const [yesterday, setYesterday] = useState<Record<Period, RoomValues>>({ '午前': {}, '午後': {} })
+  // 週平均: period → roomId → count
+  const [weekAvg, setWeekAvg] = useState<Record<Period, Record<string, number>>>({ '午前': {}, '午後': {} })
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
@@ -24,26 +30,58 @@ export default function EggsPage() {
 
   const loadData = useCallback(async () => {
     if (!currentDate) return
-    const { data } = await supabase
-      .from('egg_records').select('room_id, period, count').eq('record_date', currentDate)
+    const [y, m, d] = currentDate.split('-').map(Number)
+    const yDateStr = toDateStr(new Date(y, m - 1, d - 1))
+    const from7    = toDateStr(new Date(y, m - 1, d - 7))
+    const to7      = toDateStr(new Date(y, m - 1, d - 1))
+
+    const [{ data }, { data: yData }, { data: weekData }] = await Promise.all([
+      supabase.from('egg_records').select('room_id, period, count').eq('record_date', currentDate),
+      supabase.from('egg_records').select('room_id, period, count').eq('record_date', yDateStr),
+      supabase.from('egg_records')
+        .select('record_date, room_id, period, count')
+        .gte('record_date', from7)
+        .lte('record_date', to7),
+    ])
+
+    // 当日の値
     const newValues: Record<Period, RoomValues> = { '午前': {}, '午後': {} }
     data?.forEach((r) => {
       if (r.period === '午前' || r.period === '午後')
         newValues[r.period as Period][r.room_id] = String(r.count)
     })
     setValues(newValues)
-    const yDate = new Date(currentDate + 'T00:00:00')
-    yDate.setDate(yDate.getDate() - 1)
-    const { data: yData } = await supabase
-      .from('egg_records').select('room_id, period, count')
-      .eq('record_date', yDate.toISOString().split('T')[0])
+
+    // 前日の値
     const yValues: Record<Period, RoomValues> = { '午前': {}, '午後': {} }
     yData?.forEach((r) => {
       if (r.period === '午前' || r.period === '午後')
         yValues[r.period as Period][r.room_id] = String(r.count)
     })
     setYesterday(yValues)
-  }, [currentDate])
+
+    // 週平均: room+period ごとに「データがある日のみ」で平均
+    const sumMap: Record<string, Record<string, number>> = { '午前': {}, '午後': {} }
+    const cntMap: Record<string, Record<string, Set<string>>> = { '午前': {}, '午後': {} }
+    for (const p of ['午前', '午後'] as Period[]) {
+      cntMap[p] = {}
+      rooms.forEach((r) => { cntMap[p][r.id] = new Set() })
+    }
+    weekData?.forEach((r) => {
+      const p = r.period as Period
+      if (p !== '午前' && p !== '午後') return
+      sumMap[p][r.room_id] = (sumMap[p][r.room_id] || 0) + r.count
+      cntMap[p][r.room_id]?.add(r.record_date)
+    })
+    const avg: Record<Period, Record<string, number>> = { '午前': {}, '午後': {} }
+    for (const p of ['午前', '午後'] as Period[]) {
+      rooms.forEach((r) => {
+        const cnt = cntMap[p][r.id]?.size || 0
+        if (cnt > 0) avg[p][r.id] = Math.round(sumMap[p][r.id] / cnt)
+      })
+    }
+    setWeekAvg(avg)
+  }, [currentDate, rooms])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -90,14 +128,39 @@ export default function EggsPage() {
         <div className="grid grid-cols-2 gap-2 mb-4">
           {rooms.map((room) => {
             const yVal = yesterday[period][room.id]
-            const val = values[period][room.id] ?? ''
+            const avg  = weekAvg[period][room.id]
+            const val  = values[period][room.id] ?? ''
             const hasValue = val !== ''
+
+            // 前日 / 週平均 ヒント
+            let hint: React.ReactNode = null
+            if (yVal != null && avg != null) {
+              hint = (
+                <>
+                  <span className="text-text2">前日</span>
+                  <span className="text-accent font-bold mx-0.5">{yVal}</span>
+                  <span className="text-text2/60 mx-0.5">/</span>
+                  <span className="text-text2">週平</span>
+                  <span className="text-blue font-bold ml-0.5">{avg}</span>
+                  <span className="text-text2 ml-0.5">個</span>
+                </>
+              )
+            } else if (yVal != null) {
+              hint = <><span className="text-text2">前日 </span><span className="text-accent font-bold">{yVal}</span><span className="text-text2">個</span></>
+            } else if (avg != null) {
+              hint = <><span className="text-text2">週平 </span><span className="text-blue font-bold">{avg}</span><span className="text-text2">個</span></>
+            }
+
             return (
               <div key={room.id}
                 className={`bg-surface rounded-xl border p-3 transition-all min-w-0
                   ${hasValue ? 'border-accent/60' : 'border-border'}`}>
                 <div className="text-xs font-bold text-text2 mb-1">{room.name}</div>
-                {yVal && <div className="text-[10px] text-text2 mb-1.5">昨日 {yVal}個</div>}
+                {hint && (
+                  <div className="text-[10px] mb-1.5 flex items-baseline flex-wrap gap-x-0.5">
+                    {hint}
+                  </div>
+                )}
                 <div className="flex items-center gap-1.5 min-w-0">
                   <input type="number" inputMode="numeric" pattern="[0-9]*"
                     value={val} onChange={(e) => handleInput(room.id, e.target.value)}
