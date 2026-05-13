@@ -132,36 +132,12 @@ export default function EggsPage() {
             const val  = values[period][room.id] ?? ''
             const hasValue = val !== ''
 
-            // 前日 / 週平均 ヒント
-            let hint: React.ReactNode = null
-            if (yVal != null && avg != null) {
-              hint = (
-                <>
-                  <span className="text-text2">前日</span>
-                  <span className="text-accent font-bold mx-0.5">{yVal}</span>
-                  <span className="text-text2/60 mx-0.5">/</span>
-                  <span className="text-text2">週平</span>
-                  <span className="text-blue font-bold ml-0.5">{avg}</span>
-                  <span className="text-text2 ml-0.5">個</span>
-                </>
-              )
-            } else if (yVal != null) {
-              hint = <><span className="text-text2">前日 </span><span className="text-accent font-bold">{yVal}</span><span className="text-text2">個</span></>
-            } else if (avg != null) {
-              hint = <><span className="text-text2">週平 </span><span className="text-blue font-bold">{avg}</span><span className="text-text2">個</span></>
-            }
-
             return (
               <div key={room.id}
                 className={`bg-surface rounded-xl border p-3 transition-all min-w-0
                   ${hasValue ? 'border-accent/60' : 'border-border'}`}>
-                <div className="text-xs font-bold text-text2 mb-1">{room.name}</div>
-                {hint && (
-                  <div className="text-[10px] mb-1.5 flex items-baseline flex-wrap gap-x-0.5">
-                    {hint}
-                  </div>
-                )}
-                <div className="flex items-center gap-1.5 min-w-0">
+                <div className="text-xs font-bold text-text2 mb-1.5">{room.name}</div>
+                <div className="flex items-center gap-1.5 min-w-0 mb-2">
                   <input type="number" inputMode="numeric" pattern="[0-9]*"
                     value={val} onChange={(e) => handleInput(room.id, e.target.value)}
                     onFocus={(e) => e.target.select()} placeholder="－"
@@ -172,6 +148,18 @@ export default function EggsPage() {
                   />
                   <span className="text-xs text-text2 flex-shrink-0">個</span>
                 </div>
+                {yVal != null && (
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-text2">前日</span>
+                    <span className="font-bold text-accent">{yVal}個</span>
+                  </div>
+                )}
+                {avg != null && (
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-text2">週平均</span>
+                    <span className="font-bold text-blue">{avg}個</span>
+                  </div>
+                )}
               </div>
             )
           })}

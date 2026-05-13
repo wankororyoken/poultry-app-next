@@ -144,27 +144,12 @@ export default function FeedPage() {
             const val = values[period][room.id] ?? ''
             const hasValue = val !== ''
 
-            // 食い込みヒント表示
-            let hint: React.ReactNode = null
-            if (avg != null && def != null) {
-              hint = <><span className="text-green">{avg}kg</span><span className="text-text2/60 mx-0.5">/</span><span className="text-text2">規{def}kg</span></>
-            } else if (avg != null) {
-              hint = <span className="text-green">{avg}kg</span>
-            } else if (def != null) {
-              hint = <span className="text-text2">規{def}kg</span>
-            }
-
             return (
               <div key={room.id}
                 className={`bg-surface rounded-xl border p-3 transition-all min-w-0
                   ${hasValue ? 'border-green/60' : 'border-border'}`}>
-                <div className="text-xs font-bold text-text2 mb-1">{room.name}</div>
-                {hint && (
-                  <div className="text-[10px] font-bold mb-1.5 flex items-baseline gap-0.5">
-                    <span className="text-text2 mr-0.5">週平</span>{hint}
-                  </div>
-                )}
-                <div className="flex items-center gap-1.5 min-w-0">
+                <div className="text-xs font-bold text-text2 mb-1.5">{room.name}</div>
+                <div className="flex items-center gap-1.5 min-w-0 mb-2">
                   <input type="number" inputMode="decimal"
                     value={val} onChange={(e) => handleInput(room.id, e.target.value)}
                     onFocus={(e) => e.target.select()} placeholder="－"
@@ -175,6 +160,18 @@ export default function FeedPage() {
                   />
                   <span className="text-xs text-text2 flex-shrink-0">kg</span>
                 </div>
+                {avg != null && (
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-text2">週平均</span>
+                    <span className="font-bold text-green">{avg}kg</span>
+                  </div>
+                )}
+                {def != null && (
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-text2">規定量</span>
+                    <span className="font-bold text-text2">{def}kg</span>
+                  </div>
+                )}
               </div>
             )
           })}
