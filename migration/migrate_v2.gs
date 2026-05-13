@@ -9,7 +9,7 @@
 const SUPABASE_URL = 'https://bkgqbpmumhohrgqybprj.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_fFtTJahMFgXDzrXF1Mj59A_MP9LaetZ';
 
-// 鶏舎名 → UUID
+// 鶏舎名 → UUID（スプレッドシートの表記ゆれも含めてマッピング）
 const ROOM_IDS = {
   '1~3番': '6a1ce79b-28fe-4aa4-84cf-ff19fd9cbc19',
   '4番':   '061aed33-13ed-447c-b683-02601b6e9a89',
@@ -18,6 +18,10 @@ const ROOM_IDS = {
   '8番':   '919a4ef0-e789-432a-bf22-8e47daa50981',
   '9番':   'f744b0d2-005b-41a9-b094-3a4d4598b25b',
   '10番':  'b30d8b49-d86f-4849-8b70-c6aef955e147',
+  // 隔離部屋（スプレッドシートの表記に合わせて複数登録）
+  '隔離部屋': 'a8358953-bedd-4f23-944a-7a44d90e7f12',
+  '隔離室':   'a8358953-bedd-4f23-944a-7a44d90e7f12',
+  '隔離':     'a8358953-bedd-4f23-944a-7a44d90e7f12',
 };
 
 // 入力者名 → UUID
