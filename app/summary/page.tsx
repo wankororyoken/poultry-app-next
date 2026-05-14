@@ -281,6 +281,77 @@ export default function SummaryPage() {
                     )
                   })}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-border bg-surface2">
+                    <td className="sticky left-0 z-10 bg-surface2 px-3 py-2 text-[10px]
+                                   font-black text-text2 whitespace-nowrap border-r border-border">
+                      平均
+                    </td>
+                    {rooms.map((room) => {
+                      let avg: number | null = null
+                      if (metric === '餌/卵') {
+                        const vals = dates.map(d => getFeedPerEgg(room.id, d)).filter(v => v != null) as number[]
+                        avg = vals.length > 0 ? Math.round(vals.reduce((a,b) => a+b,0) / vals.length) : null
+                      } else {
+                        const vals = dates.map(d => getCellValue(room.id, d)).filter(v => v != null) as number[]
+                        if (vals.length > 0) {
+                          const sum = vals.reduce((a,b) => a+b, 0)
+                          avg = metric === '餌'
+                            ? Math.round(sum / vals.length * 10) / 10
+                            : Math.round(sum / vals.length * 10) / 10
+                        }
+                      }
+                      return (
+                        <td key={room.id}
+                            className="text-center text-[11px] font-black px-2 py-2 whitespace-nowrap"
+                            style={metric === '餌/卵' ? feedPerEggStyle(avg) : undefined}>
+                          <span className={
+                            metric === '餌/卵' ? '' :
+                            metric === '採卵'  ? (avg != null ? 'text-accent' : 'text-border') :
+                            metric === '餌'    ? (avg != null ? 'text-green'  : 'text-border') :
+                            avg != null && avg > 0 ? 'text-red' : avg === 0 ? 'text-text2' : 'text-border'
+                          }>
+                            {avg ?? '－'}
+                          </span>
+                        </td>
+                      )
+                    })}
+                    {/* 合計列の平均 */}
+                    {(() => {
+                      let avg: number | null = null
+                      if (metric === '餌/卵') {
+                        // 全期間の総餌 / 総採卵
+                        const totalEggs = dates.reduce((s, d) =>
+                          s + rooms.reduce((rs, r) => { const ed = eggData[r.id]?.[d]; return rs + (ed ? ed.am+ed.pm : 0) }, 0), 0)
+                        const totalFeed = dates.reduce((s, d) =>
+                          s + rooms.reduce((rs, r) => { const fd = feedData[r.id]?.[d]; return rs + (fd ? Math.round((fd.am+fd.pm)*10)/10 : 0) }, 0), 0)
+                        avg = totalEggs > 0 && totalFeed > 0 ? Math.round((totalFeed*1000)/totalEggs) : null
+                      } else {
+                        const vals = dates.map(d => getRowTotal(d)).filter(v => v != null) as number[]
+                        if (vals.length > 0) {
+                          const sum = vals.reduce((a,b) => a+b, 0)
+                          avg = metric === '餌'
+                            ? Math.round(sum / vals.length * 10) / 10
+                            : Math.round(sum / vals.length * 10) / 10
+                        }
+                      }
+                      return (
+                        <td className="text-center text-[11px] font-black px-2 py-2 whitespace-nowrap
+                                       border-l border-border"
+                            style={metric === '餌/卵' ? feedPerEggStyle(avg) : undefined}>
+                          <span className={
+                            metric === '餌/卵' ? '' :
+                            metric === '採卵'  ? (avg != null ? 'text-accent' : 'text-border') :
+                            metric === '餌'    ? (avg != null ? 'text-green'  : 'text-border') :
+                            avg != null && avg > 0 ? 'text-red' : avg === 0 ? 'text-text2' : 'text-border'
+                          }>
+                            {avg ?? '－'}
+                          </span>
+                        </td>
+                      )
+                    })()}
+                  </tr>
+                </tfoot>
               </table>
             </div>
           )}
