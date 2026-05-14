@@ -80,9 +80,8 @@ export default function DeadPage() {
               <div key={room.id}
                 className={`bg-surface rounded-xl border p-3 transition-all min-w-0
                   ${hasValue && Number(val) > 0 ? 'border-red/60' : 'border-border'}`}>
-                <div className="text-xs font-bold text-text2 mb-1">{room.name}</div>
-                {m > 0 && <div className="text-[10px] text-text2 mb-1.5">30日累計 {m}羽</div>}
-                <div className="flex items-center gap-1.5 min-w-0">
+                <div className="text-xs font-bold text-text2 mb-1.5">{room.name}</div>
+                <div className="flex items-center gap-1.5 min-w-0 mb-2">
                   <input type="number" inputMode="numeric" pattern="[0-9]*"
                     value={val} onChange={(e) => handleInput(room.id, e.target.value)}
                     onFocus={(e) => e.target.select()} placeholder="－"
@@ -93,6 +92,12 @@ export default function DeadPage() {
                   />
                   <span className="text-xs text-text2 flex-shrink-0">羽</span>
                 </div>
+                {m > 0 && (
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-text2">30日累計</span>
+                    <span className="font-bold text-red">{m}羽</span>
+                  </div>
+                )}
               </div>
             )
           })}
