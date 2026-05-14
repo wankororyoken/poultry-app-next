@@ -6,217 +6,334 @@ import AppShell from '@/components/AppShell'
 import Header from '@/components/Header'
 import { supabase } from '@/lib/supabase'
 
-type DayRow = {
-  date: string
-  eggs: number
-  feed: number
-  dead: number
-  feedPerEgg: number | null
+type Metric = '採卵' | '餌' | '死鶏' | '餌/卵'
+type Period = '午前' | '午後' | '合計'
+type Range = 7 | 14 | 30
+
+function toDateStr(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// 餌/卵の色
+function feedPerEggStyle(g: number | null): React.CSSProperties {
+  if (g == null) return { color: 'var(--color-border)' }
+  if (g <= 200) return { color: 'var(--color-green)' }
+  if (g <= 300) return { color: 'var(--color-accent)' }
+  if (g <= 400) return { color: '#e8743b' }
+  return { color: 'var(--color-red)' }
 }
 
 export default function SummaryPage() {
   const { rooms } = useApp()
-  const [year, setYear] = useState(() => new Date().getFullYear())
-  const [month, setMonth] = useState(() => new Date().getMonth() + 1)
-  const [rows, setRows] = useState<DayRow[]>([])
+  const [metric, setMetric] = useState<Metric>('採卵')
+  const [period, setPeriod] = useState<Period>('合計')
+  const [range, setRange] = useState<Range>(14)
+
+  // roomId → date → {am, pm, total}
+  const [eggData,  setEggData]  = useState<Record<string, Record<string, {am:number,pm:number}>>>({})
+  const [feedData, setFeedData] = useState<Record<string, Record<string, {am:number,pm:number}>>>({})
+  const [deadData, setDeadData] = useState<Record<string, Record<string, number>>>({})
   const [loading, setLoading] = useState(true)
+
+  // 表示する日付一覧（新しい順）
+  const today = new Date()
+  const dates: string[] = []
+  for (let i = 0; i < range; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i)
+    dates.push(toDateStr(d))
+  }
+  const fromDate = dates[dates.length - 1]
+  const toDate   = dates[0]
 
   const load = useCallback(async () => {
     setLoading(true)
-    const from = `${year}-${String(month).padStart(2, '0')}-01`
-    const lastDay = new Date(year, month, 0).getDate()
-    const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-
     const [{ data: eggs }, { data: feed }, { data: dead }] = await Promise.all([
-      supabase.from('egg_records').select('record_date, count').gte('record_date', from).lte('record_date', to),
-      supabase.from('feed_records').select('record_date, amount_kg').gte('record_date', from).lte('record_date', to),
-      supabase.from('dead_records').select('record_date, count').gte('record_date', from).lte('record_date', to),
+      supabase.from('egg_records').select('record_date,room_id,period,count')
+        .gte('record_date', fromDate).lte('record_date', toDate),
+      supabase.from('feed_records').select('record_date,room_id,period,amount_kg')
+        .gte('record_date', fromDate).lte('record_date', toDate),
+      supabase.from('dead_records').select('record_date,room_id,count')
+        .gte('record_date', fromDate).lte('record_date', toDate),
     ])
 
-    // 日付ごとに集計
-    const eggMap: Record<string, number> = {}
-    eggs?.forEach((r) => { eggMap[r.record_date] = (eggMap[r.record_date] || 0) + r.count })
+    // 採卵: roomId → date → {am, pm}
+    const em: Record<string, Record<string, {am:number,pm:number}>> = {}
+    eggs?.forEach((r) => {
+      if (!em[r.room_id]) em[r.room_id] = {}
+      if (!em[r.room_id][r.record_date]) em[r.room_id][r.record_date] = {am:0, pm:0}
+      if (r.period === '午前') em[r.room_id][r.record_date].am += r.count
+      else                     em[r.room_id][r.record_date].pm += r.count
+    })
+    setEggData(em)
 
-    const feedMap: Record<string, number> = {}
+    // 餌: roomId → date → {am, pm}
+    const fm: Record<string, Record<string, {am:number,pm:number}>> = {}
     feed?.forEach((r) => {
-      feedMap[r.record_date] = Math.round(((feedMap[r.record_date] || 0) + r.amount_kg) * 10) / 10
+      if (!fm[r.room_id]) fm[r.room_id] = {}
+      if (!fm[r.room_id][r.record_date]) fm[r.room_id][r.record_date] = {am:0, pm:0}
+      if (r.period === '午前') fm[r.room_id][r.record_date].am = Math.round((fm[r.room_id][r.record_date].am + r.amount_kg)*10)/10
+      else                     fm[r.room_id][r.record_date].pm = Math.round((fm[r.room_id][r.record_date].pm + r.amount_kg)*10)/10
     })
+    setFeedData(fm)
 
-    const deadMap: Record<string, number> = {}
-    dead?.forEach((r) => { deadMap[r.record_date] = (deadMap[r.record_date] || 0) + r.count })
-
-    // データがある日だけ行を作る
-    const dates = new Set([
-      ...Object.keys(eggMap),
-      ...Object.keys(feedMap),
-      ...Object.keys(deadMap),
-    ])
-
-    const result: DayRow[] = Array.from(dates).sort().map((date) => {
-      const e = eggMap[date] || 0
-      const f = feedMap[date] || 0
-      return {
-        date,
-        eggs: e,
-        feed: f,
-        dead: deadMap[date] || 0,
-        feedPerEgg: e > 0 && f > 0 ? Math.round((f * 1000) / e) : null,
-      }
+    // 死鶏: roomId → date → count
+    const dm: Record<string, Record<string, number>> = {}
+    dead?.forEach((r) => {
+      if (!dm[r.room_id]) dm[r.room_id] = {}
+      dm[r.room_id][r.record_date] = (dm[r.room_id][r.record_date] || 0) + r.count
     })
+    setDeadData(dm)
 
-    setRows(result)
     setLoading(false)
-  }, [year, month])
+  }, [fromDate, toDate])
 
   useEffect(() => { load() }, [load])
 
-  const moveMonth = (delta: number) => {
-    let m = month + delta
-    let y = year
-    if (m > 12) { m = 1; y++ }
-    if (m < 1)  { m = 12; y-- }
-    setMonth(m); setYear(y)
+  // セルの値を取得
+  const getCellValue = (roomId: string, date: string): number | null => {
+    if (metric === '採卵') {
+      const d = eggData[roomId]?.[date]
+      if (!d) return null
+      if (period === '午前') return d.am || null
+      if (period === '午後') return d.pm || null
+      const t = d.am + d.pm; return t > 0 ? t : null
+    }
+    if (metric === '餌') {
+      const d = feedData[roomId]?.[date]
+      if (!d) return null
+      if (period === '午前') return d.am > 0 ? d.am : null
+      if (period === '午後') return d.pm > 0 ? d.pm : null
+      const t = Math.round((d.am + d.pm)*10)/10; return t > 0 ? t : null
+    }
+    if (metric === '死鶏') {
+      const v = deadData[roomId]?.[date]
+      return v != null ? v : null
+    }
+    return null
   }
 
-  const totalEggs = rows.reduce((s, r) => s + r.eggs, 0)
-  const totalFeed = Math.round(rows.reduce((s, r) => s + r.feed, 0) * 10) / 10
-  const totalDead = rows.reduce((s, r) => s + r.dead, 0)
-  const totalFeedPerEgg = totalEggs > 0 && totalFeed > 0
-    ? Math.round((totalFeed * 1000) / totalEggs) : null
+  // 餌/卵セルの値
+  const getFeedPerEgg = (roomId: string, date: string): number | null => {
+    const ed = eggData[roomId]?.[date]
+    const fd = feedData[roomId]?.[date]
+    if (!ed || !fd) return null
+    const eggs = ed.am + ed.pm
+    const feed = Math.round((fd.am + fd.pm)*10)/10
+    return eggs > 0 && feed > 0 ? Math.round((feed * 1000) / eggs) : null
+  }
 
-  const feedPerEggStyle = (g: number | null): React.CSSProperties => {
-    if (g == null) return { color: 'var(--color-border)' }
-    if (g <= 200) return { color: 'var(--color-green)' }
-    if (g <= 300) return { color: 'var(--color-accent)' }
-    if (g <= 400) return { color: '#e8743b' }
-    return { color: 'var(--color-red)' }
+  // 行合計
+  const getRowTotal = (date: string): number | null => {
+    if (metric === '餌/卵') {
+      // 全体の合計餌 / 全体の合計採卵
+      const totalEggs = rooms.reduce((s, r) => {
+        const d = eggData[r.id]?.[date]; return s + (d ? d.am + d.pm : 0)
+      }, 0)
+      const totalFeed = rooms.reduce((s, r) => {
+        const d = feedData[r.id]?.[date]; return s + (d ? Math.round((d.am + d.pm)*10)/10 : 0)
+      }, 0)
+      return totalEggs > 0 && totalFeed > 0 ? Math.round((totalFeed * 1000) / totalEggs) : null
+    }
+    const vals = rooms.map(r => getCellValue(r.id, date)).filter(v => v != null) as number[]
+    if (vals.length === 0) return null
+    if (metric === '餌') return Math.round(vals.reduce((a, b) => a + b, 0) * 10) / 10
+    return vals.reduce((a, b) => a + b, 0)
+  }
+
+  const showPeriod = metric === '採卵' || metric === '餌'
+
+  // 曜日スタイル
+  const dayStyle = (dateStr: string) => {
+    const day = new Date(dateStr + 'T00:00:00').getDay()
+    if (day === 0) return 'text-red'
+    if (day === 6) return 'text-blue'
+    return 'text-text2'
+  }
+
+  const dateLabel = (dateStr: string) => {
+    return new Date(dateStr + 'T00:00:00')
+      .toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', weekday: 'short' })
   }
 
   return (
     <AppShell>
       <Header title="養鶏管理" />
-      <div className="pt-[calc(52px+env(safe-area-inset-top))] px-3 py-4 space-y-4">
+      <div className="pt-[calc(52px+env(safe-area-inset-top))] px-3 py-4 space-y-3">
 
-        {/* 月選択 */}
-        <div className="flex items-center justify-center gap-4">
-          <button onClick={() => moveMonth(-1)}
-            className="w-10 h-10 flex items-center justify-center bg-surface2 border border-border
-                       rounded-full text-text2 font-bold text-lg"
-            style={{ touchAction: 'manipulation' }}>‹</button>
-          <span className="text-base font-black text-text min-w-[100px] text-center">
-            {year}年{month}月
-          </span>
-          <button onClick={() => moveMonth(1)}
-            className="w-10 h-10 flex items-center justify-center bg-surface2 border border-border
-                       rounded-full text-text2 font-bold text-lg"
-            style={{ touchAction: 'manipulation' }}>›</button>
+        {/* 指標選択 */}
+        <div className="flex bg-surface2 rounded-xl p-1 border border-border">
+          {(['採卵', '餌', '死鶏', '餌/卵'] as Metric[]).map((m) => (
+            <button key={m} onClick={() => setMetric(m)}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all
+                ${metric === m ? 'bg-accent text-black' : 'text-text2'}`}
+              style={{ touchAction: 'manipulation' }}>
+              {m === '採卵' ? '🥚' : m === '餌' ? '🌾' : m === '死鶏' ? '💀' : '📈'} {m}
+            </button>
+          ))}
         </div>
 
-        {/* 月間サマリーカード */}
-        {!loading && rows.length > 0 && (
-          <div className="bg-surface rounded-2xl border border-border p-4">
-            <div className="text-xs font-black text-text2 tracking-widest uppercase mb-3">
-              📊 {month}月 月間集計
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-surface2 rounded-xl border border-border p-3 text-center">
-                <div className="text-[10px] text-text2 mb-1">🥚 採卵合計</div>
-                <div className="text-xl font-black text-accent">
-                  {totalEggs.toLocaleString()}<span className="text-xs ml-0.5">個</span>
-                </div>
-              </div>
-              <div className="bg-surface2 rounded-xl border border-border p-3 text-center">
-                <div className="text-[10px] text-text2 mb-1">🌾 餌合計</div>
-                <div className="text-xl font-black text-green">
-                  {totalFeed.toLocaleString()}<span className="text-xs ml-0.5">kg</span>
-                </div>
-              </div>
-              <div className="bg-surface2 rounded-xl border border-border p-3 text-center">
-                <div className="text-[10px] text-text2 mb-1">📈 月間餌/卵</div>
-                <div className="text-xl font-black" style={feedPerEggStyle(totalFeedPerEgg)}>
-                  {totalFeedPerEgg != null ? <>{totalFeedPerEgg}<span className="text-xs ml-0.5">g</span></> : '－'}
-                </div>
-              </div>
-              <div className="bg-surface2 rounded-xl border border-border p-3 text-center">
-                <div className="text-[10px] text-text2 mb-1">💀 死鶏合計</div>
-                <div className={`text-xl font-black ${totalDead > 0 ? 'text-red' : 'text-text2'}`}>
-                  {totalDead}<span className="text-xs ml-0.5">羽</span>
-                </div>
-              </div>
-            </div>
+        {/* 午前/午後/合計（採卵・餌のみ） */}
+        {showPeriod && (
+          <div className="flex bg-surface2 rounded-xl p-1 border border-border">
+            {(['午前', '午後', '合計'] as Period[]).map((p) => (
+              <button key={p} onClick={() => setPeriod(p)}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all
+                  ${period === p ? 'bg-surface border border-border text-text' : 'text-text2'}`}
+                style={{ touchAction: 'manipulation' }}>
+                {p === '午前' ? '☀️ 午前' : p === '午後' ? '🌙 午後' : '📊 合計'}
+              </button>
+            ))}
           </div>
         )}
 
-        {/* 日別テーブル */}
-        <div className="bg-surface rounded-2xl border border-border p-4">
-          <div className="text-xs font-black text-text2 tracking-widest uppercase mb-3">
-            📅 日別一覧
-          </div>
+        {/* 期間選択 */}
+        <div className="flex gap-2">
+          {([7, 14, 30] as Range[]).map((r) => (
+            <button key={r} onClick={() => setRange(r)}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all
+                ${range === r ? 'bg-accent text-black border-accent' : 'bg-surface2 text-text2 border-border'}`}
+              style={{ touchAction: 'manipulation' }}>
+              直近{r}日
+            </button>
+          ))}
+        </div>
+
+        {/* マトリクステーブル */}
+        <div className="bg-surface rounded-2xl border border-border overflow-hidden">
           {loading ? (
-            <p className="text-sm text-text2 text-center py-4">読み込み中...</p>
-          ) : rows.length === 0 ? (
-            <p className="text-sm text-text2 text-center py-4">データがありません</p>
+            <p className="text-sm text-text2 text-center py-8">読み込み中...</p>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left text-[10px] text-text2 font-bold pb-2">日付</th>
-                  <th className="text-center text-[10px] text-text2 font-bold pb-2">🥚採卵</th>
-                  <th className="text-center text-[10px] text-text2 font-bold pb-2">🌾餌</th>
-                  <th className="text-center text-[10px] text-text2 font-bold pb-2">📈餌/卵</th>
-                  <th className="text-center text-[10px] text-text2 font-bold pb-2">💀死鶏</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  const d = new Date(row.date + 'T00:00:00')
-                  const dayLabel = d.toLocaleDateString('ja-JP', { day: 'numeric', weekday: 'short' })
-                  const isSun = d.getDay() === 0
-                  const isSat = d.getDay() === 6
-                  return (
-                    <tr key={row.date} className="border-b border-border/40 last:border-0">
-                      <td className={`py-1.5 text-[11px] font-bold
-                        ${isSun ? 'text-red' : isSat ? 'text-blue' : 'text-text2'}`}>
-                        {dayLabel}
-                      </td>
-                      <td className="py-1.5 text-center text-[11px] font-bold text-accent">
-                        {row.eggs > 0 ? row.eggs : '－'}
-                      </td>
-                      <td className="py-1.5 text-center text-[11px] font-bold text-green">
-                        {row.feed > 0 ? row.feed : '－'}
-                      </td>
-                      <td className="py-1.5 text-center text-[11px] font-bold"
-                          style={feedPerEggStyle(row.feedPerEgg)}>
-                        {row.feedPerEgg ?? '－'}
-                      </td>
-                      <td className={`py-1.5 text-center text-[11px] font-bold
-                        ${row.dead > 0 ? 'text-red' : 'text-text2'}`}>
-                        {row.dead > 0 ? row.dead : '０'}
-                      </td>
-                    </tr>
-                  )
-                })}
-                {/* 合計行 */}
-                <tr className="border-t-2 border-border">
-                  <td className="pt-2.5 text-[11px] font-black">合計</td>
-                  <td className="pt-2.5 text-center text-[11px] font-black text-accent">
-                    {totalEggs.toLocaleString()}<span className="text-[9px] ml-0.5">個</span>
-                  </td>
-                  <td className="pt-2.5 text-center text-[11px] font-black text-green">
-                    {totalFeed}<span className="text-[9px] ml-0.5">kg</span>
-                  </td>
-                  <td className="pt-2.5 text-center text-[11px] font-black"
-                      style={feedPerEggStyle(totalFeedPerEgg)}>
-                    {totalFeedPerEgg != null ? <>{totalFeedPerEgg}<span className="text-[9px] ml-0.5">g</span></> : '－'}
-                  </td>
-                  <td className={`pt-2.5 text-center text-[11px] font-black ${totalDead > 0 ? 'text-red' : 'text-text2'}`}>
-                    {totalDead}<span className="text-[9px] ml-0.5">羽</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="border-collapse" style={{ minWidth: 'max-content', width: '100%' }}>
+                <thead>
+                  <tr className="border-b border-border bg-surface2">
+                    {/* 日付列ヘッダー（固定） */}
+                    <th className="sticky left-0 z-10 bg-surface2 text-left text-[10px] text-text2
+                                   font-bold px-3 py-2 whitespace-nowrap border-r border-border">
+                      日付
+                    </th>
+                    {rooms.map((room) => (
+                      <th key={room.id}
+                          className="text-center text-[10px] text-text2 font-bold px-2 py-2 whitespace-nowrap">
+                        {room.name}
+                      </th>
+                    ))}
+                    <th className="text-center text-[10px] text-text2 font-bold px-2 py-2 whitespace-nowrap
+                                   border-l border-border">
+                      合計
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dates.map((date) => {
+                    const rowTotal = getRowTotal(date)
+                    const hasAnyData = rooms.some(r =>
+                      metric === '餌/卵' ? getFeedPerEgg(r.id, date) != null : getCellValue(r.id, date) != null
+                    )
+                    return (
+                      <tr key={date}
+                          className={`border-b border-border/40 last:border-0
+                            ${!hasAnyData ? 'opacity-35' : ''}`}>
+                        {/* 日付列（固定） */}
+                        <td className={`sticky left-0 z-10 bg-surface px-3 py-1.5 text-[11px]
+                                       font-bold whitespace-nowrap border-r border-border ${dayStyle(date)}`}>
+                          {dateLabel(date)}
+                        </td>
+                        {rooms.map((room) => {
+                          if (metric === '餌/卵') {
+                            const v = getFeedPerEgg(room.id, date)
+                            return (
+                              <td key={room.id}
+                                  className="text-center text-[11px] font-bold px-2 py-1.5 whitespace-nowrap"
+                                  style={feedPerEggStyle(v)}>
+                                {v ?? '－'}
+                              </td>
+                            )
+                          }
+                          const v = getCellValue(room.id, date)
+                          const color =
+                            metric === '採卵' ? (v != null ? 'text-accent' : 'text-border') :
+                            metric === '餌'   ? (v != null ? 'text-green'  : 'text-border') :
+                            /* 死鶏 */          (v != null && v > 0 ? 'text-red' : v === 0 ? 'text-text2' : 'text-border')
+                          return (
+                            <td key={room.id}
+                                className={`text-center text-[11px] font-bold px-2 py-1.5 whitespace-nowrap ${color}`}>
+                              {v ?? '－'}
+                            </td>
+                          )
+                        })}
+                        {/* 行合計 */}
+                        <td className="text-center text-[11px] font-black px-2 py-1.5 whitespace-nowrap
+                                       border-l border-border"
+                            style={metric === '餌/卵' ? feedPerEggStyle(rowTotal) : undefined}
+                            >
+                          {rowTotal != null ? (
+                            <span className={
+                              metric === '採卵' ? 'text-accent' :
+                              metric === '餌'   ? 'text-green'  :
+                              metric === '死鶏' ? (rowTotal > 0 ? 'text-red' : 'text-text2') : ''
+                            }>
+                              {rowTotal}
+                            </span>
+                          ) : '－'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
+
+        {/* 期間合計バー */}
+        {!loading && (
+          <div className="bg-surface rounded-2xl border border-border px-4 py-3">
+            <div className="text-[10px] text-text2 font-bold mb-2">
+              直近{range}日 合計
+            </div>
+            <div className="flex gap-4">
+              {metric !== '餌/卵' && (() => {
+                const total = dates.reduce((s, date) => {
+                  const v = getRowTotal(date); return s + (v ?? 0)
+                }, 0)
+                const unit = metric === '採卵' ? '個' : metric === '餌' ? 'kg' : '羽'
+                const color = metric === '採卵' ? 'text-accent' : metric === '餌' ? 'text-green'
+                  : total > 0 ? 'text-red' : 'text-text2'
+                return (
+                  <div>
+                    <span className={`text-xl font-black ${color}`}>
+                      {metric === '餌'
+                        ? Math.round(total * 10) / 10
+                        : total}
+                    </span>
+                    <span className="text-xs text-text2 ml-1">{unit}</span>
+                  </div>
+                )
+              })()}
+              {metric === '餌/卵' && (() => {
+                const totalEggs = dates.reduce((s, date) =>
+                  s + rooms.reduce((rs, r) => {
+                    const d = eggData[r.id]?.[date]; return rs + (d ? d.am + d.pm : 0)
+                  }, 0), 0)
+                const totalFeed = dates.reduce((s, date) =>
+                  s + rooms.reduce((rs, r) => {
+                    const d = feedData[r.id]?.[date]; return rs + (d ? Math.round((d.am + d.pm)*10)/10 : 0)
+                  }, 0), 0)
+                const avg = totalEggs > 0 && totalFeed > 0
+                  ? Math.round((totalFeed * 1000) / totalEggs) : null
+                return (
+                  <div>
+                    <span className="text-xl font-black" style={feedPerEggStyle(avg)}>
+                      {avg ?? '－'}
+                    </span>
+                    {avg != null && <span className="text-xs text-text2 ml-1">g/卵</span>}
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        )}
 
       </div>
     </AppShell>
