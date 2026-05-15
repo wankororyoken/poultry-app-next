@@ -8,7 +8,6 @@ import { supabase } from '@/lib/supabase'
 
 type Metric = '採卵' | '餌' | '死鶏' | '餌/卵'
 type Period = '午前' | '午後' | '合計'
-type Range = 7 | 14 | 30
 
 function toDateStr(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -27,7 +26,11 @@ export default function SummaryPage() {
   const { rooms } = useApp()
   const [metric, setMetric] = useState<Metric>('採卵')
   const [period, setPeriod] = useState<Period>('合計')
-  const [range, setRange] = useState<Range>(14)
+
+  // 表示月（デフォルト: 今月）
+  const today = new Date()
+  const [viewYear,  setViewYear]  = useState(today.getFullYear())
+  const [viewMonth, setViewMonth] = useState(today.getMonth() + 1) // 1-indexed
 
   // roomId → date → {am, pm, total}
   const [eggData,  setEggData]  = useState<Record<string, Record<string, {am:number,pm:number}>>>({})
@@ -35,12 +38,23 @@ export default function SummaryPage() {
   const [deadData, setDeadData] = useState<Record<string, Record<string, number>>>({})
   const [loading, setLoading] = useState(true)
 
-  // 表示する日付一覧（新しい順）
-  const today = new Date()
+  // 月ナビゲーション
+  const moveMonth = (delta: number) => {
+    let y = viewYear, m = viewMonth + delta
+    if (m > 12) { y++; m = 1 }
+    if (m < 1)  { y--; m = 12 }
+    setViewYear(y); setViewMonth(m)
+  }
+
+  // 表示する日付一覧（その月の全日、新しい順）
+  // 今月の場合は今日まで、過去月は月末まで
+  const isCurrentMonth = viewYear === today.getFullYear() && viewMonth === (today.getMonth() + 1)
+  const lastDay = isCurrentMonth
+    ? today.getDate()
+    : new Date(viewYear, viewMonth, 0).getDate() // 翌月の0日 = その月の末日
   const dates: string[] = []
-  for (let i = 0; i < range; i++) {
-    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i)
-    dates.push(toDateStr(d))
+  for (let d = lastDay; d >= 1; d--) {
+    dates.push(toDateStr(new Date(viewYear, viewMonth - 1, d)))
   }
   const fromDate = dates[dates.length - 1]
   const toDate   = dates[0]
@@ -186,16 +200,18 @@ export default function SummaryPage() {
           </div>
         )}
 
-        {/* 期間選択 */}
-        <div className="flex gap-2">
-          {([7, 14, 30] as Range[]).map((r) => (
-            <button key={r} onClick={() => setRange(r)}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all
-                ${range === r ? 'bg-accent text-black border-accent' : 'bg-surface2 text-text2 border-border'}`}
-              style={{ touchAction: 'manipulation' }}>
-              直近{r}日
-            </button>
-          ))}
+        {/* 月ナビゲーター */}
+        <div className="flex items-center justify-between bg-surface2 rounded-xl border border-border px-3 py-2">
+          <button onClick={() => moveMonth(-1)}
+            className="text-text2 font-black text-lg px-2 py-1 relative z-10"
+            style={{ touchAction: 'manipulation' }}>‹</button>
+          <span className="text-sm font-bold text-text">
+            {viewYear}年{viewMonth}月
+          </span>
+          <button onClick={() => moveMonth(+1)}
+            disabled={isCurrentMonth}
+            className="text-text2 font-black text-lg px-2 py-1 relative z-10 disabled:opacity-30"
+            style={{ touchAction: 'manipulation' }}>›</button>
         </div>
 
         {/* マトリクステーブル */}
@@ -361,7 +377,7 @@ export default function SummaryPage() {
         {!loading && (
           <div className="bg-surface rounded-2xl border border-border px-4 py-3">
             <div className="text-[10px] text-text2 font-bold mb-2">
-              直近{range}日 合計
+              {viewYear}年{viewMonth}月 合計
             </div>
             <div className="flex gap-4">
               {metric !== '餌/卵' && (() => {
