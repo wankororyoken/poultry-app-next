@@ -160,16 +160,17 @@ export default function FeedPage() {
                   />
                   <span className="text-xs text-text2 flex-shrink-0">kg</span>
                 </div>
-                {avg != null && (
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="text-text2">週平均</span>
-                    <span className="font-bold text-green">{avg}kg</span>
-                  </div>
-                )}
-                {def != null && (
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="text-text2">規定量</span>
-                    <span className="font-bold text-text2">{def}kg</span>
+                {(avg != null || def != null) && (
+                  <div className="grid gap-x-2 gap-y-0.5 text-[10px]"
+                       style={{ gridTemplateColumns: 'auto auto' }}>
+                    {avg != null && <>
+                      <span className="text-text2">週平均</span>
+                      <span className="font-bold text-green">{avg}kg</span>
+                    </>}
+                    {def != null && <>
+                      <span className="text-text2">規定量</span>
+                      <span className="font-bold text-text2">{def}kg</span>
+                    </>}
                   </div>
                 )}
               </div>

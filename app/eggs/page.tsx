@@ -148,16 +148,17 @@ export default function EggsPage() {
                   />
                   <span className="text-xs text-text2 flex-shrink-0">個</span>
                 </div>
-                {yVal != null && (
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="text-text2">前日</span>
-                    <span className="font-bold text-accent">{yVal}個</span>
-                  </div>
-                )}
-                {avg != null && (
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="text-text2">週平均</span>
-                    <span className="font-bold text-blue">{avg}個</span>
+                {(yVal != null || avg != null) && (
+                  <div className="grid gap-x-2 gap-y-0.5 text-[10px]"
+                       style={{ gridTemplateColumns: 'auto auto' }}>
+                    {yVal != null && <>
+                      <span className="text-text2">前日</span>
+                      <span className="font-bold text-accent">{yVal}個</span>
+                    </>}
+                    {avg != null && <>
+                      <span className="text-text2">週平均</span>
+                      <span className="font-bold text-blue">{avg}個</span>
+                    </>}
                   </div>
                 )}
               </div>

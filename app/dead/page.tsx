@@ -93,7 +93,8 @@ export default function DeadPage() {
                   <span className="text-xs text-text2 flex-shrink-0">羽</span>
                 </div>
                 {m > 0 && (
-                  <div className="flex justify-between items-center text-[10px]">
+                  <div className="grid gap-x-2 text-[10px]"
+                       style={{ gridTemplateColumns: 'auto auto' }}>
                     <span className="text-text2">30日累計</span>
                     <span className="font-bold text-red">{m}羽</span>
                   </div>
